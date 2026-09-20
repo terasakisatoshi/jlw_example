@@ -1,0 +1,37 @@
+# --- ビルド生成物 ---
+out/
+out-bundle/
+examples/rust/target/
+
+# --- コンパイル済みのデモ ---
+examples/cpp/demo
+examples/fortran/demo
+examples/fortran/*.mod
+examples/fortran/*.o
+
+# --- Python ---
+__pycache__/
+*.py[cod]
+*.egg-info/
+build/
+dist/
+.venv/
+venv/
+
+# --- Julia ---
+*.jl.cov
+*.jl.*.cov
+*.jl.mem
+/docs/build/
+
+# --- エディタ / OS ---
+.DS_Store
+.idea/
+.vscode/
+*.swp
+
+# --- opencode (エージェントのローカル状態) ---
+.opencode/
+
+# 再現性のため Manifest.toml は追跡する。追跡したくない場合は次を有効化する。
+# Manifest.toml

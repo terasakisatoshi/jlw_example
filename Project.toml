@@ -1,0 +1,11 @@
+name = "jlw_example"
+uuid = "453bf728-fce2-4256-a69d-3fb7a3782d19"
+version = "0.1.0"
+authors = ["Satoshi Terasaki <terasakisatoshi.math@gmail.com>"]
+
+[deps]
+JLWInterop = "65e54657-ed21-41a3-96db-71ab7fa6d94b"
+
+[compat]
+JLWInterop = "0.2"
+julia = "1.13"

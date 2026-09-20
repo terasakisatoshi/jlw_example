@@ -1,0 +1,21 @@
+# This file is machine-generated - editing it directly is not advised
+
+julia_version = "1.13.0"
+manifest_format = "2.1"
+project_hash = "e631572c78a70db3e78f22230ff0fbd9ac9d7272"
+
+[[deps.JLWInterop]]
+git-tree-sha1 = "7783d6605e87332b09de7dfce71cc8ad547b7f90"
+registries = "General"
+uuid = "65e54657-ed21-41a3-96db-71ab7fa6d94b"
+version = "0.2.0"
+
+[[deps.jlw_example]]
+deps = ["JLWInterop"]
+path = "."
+uuid = "453bf728-fce2-4256-a69d-3fb7a3782d19"
+version = "0.1.0"
+
+[registries.General]
+url = "https://github.com/JuliaRegistries/General.git"
+uuid = "23338594-aafe-5451-b93e-139f81909106"
