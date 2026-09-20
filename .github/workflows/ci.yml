@@ -1,0 +1,72 @@
+name: CI
+
+on:
+  push:
+    branches: [main]
+  pull_request:
+  workflow_dispatch:
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  demos:
+    name: Build and run every demo
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.13"
+
+      - uses: julia-actions/cache@v2
+
+      - name: Install system toolchains
+        run: |
+          sudo apt-get update
+          sudo apt-get install -y --no-install-recommends g++ gfortran
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - uses: dtolnay/rust-toolchain@stable
+        with:
+          toolchain: "1.98.1"
+
+      - name: Run all language demos
+        run: ./run_all.sh
+
+  bundle:
+    name: Verify Julia-independent bundle
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: julia-actions/setup-julia@v2
+        with:
+          version: "1.13"
+
+      - uses: julia-actions/cache@v2
+
+      - uses: actions/setup-python@v5
+        with:
+          python-version: "3.11"
+
+      - name: Build the bundled package
+        run: |
+          julia --project=build-env -e 'using Pkg; Pkg.instantiate()'
+          julia --project=. -e 'using Pkg; Pkg.instantiate()'
+          julia --project=. build_bundle.jl
+
+      - name: Install and import from a fresh venv
+        run: |
+          python -m venv /tmp/jlw_bundle-venv
+          /tmp/jlw_bundle-venv/bin/pip install --no-cache-dir ./out-bundle
+          /tmp/jlw_bundle-venv/bin/python -c \
+            'from jlw_example_py import hello; print(hello("world"))'
