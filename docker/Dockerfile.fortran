@@ -1,0 +1,27 @@
+# syntax=docker/dockerfile:1
+#
+# Runtime image for the Fortran binding.
+#
+# Compiles and runs examples/fortran/demo.f90 against the prebuilt shared
+# library in /app/out, mirroring the command documented in README.md.
+#
+# Build the base image first:
+#   docker build -f docker/Dockerfile.build -t jlw_example-build .
+# Then:
+#   docker build -f docker/Dockerfile.fortran -t jlw_example-fortran .
+#   docker run --rm jlw_example-fortran
+#
+# Override BUILD_IMAGE for a different build image or registry path.
+
+ARG BUILD_IMAGE=jlw_example-build:latest
+FROM ${BUILD_IMAGE}
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends gfortran \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+CMD ["sh", "-c", "gfortran examples/fortran/demo.f90 out/jlw_example.so -J/tmp -Wl,-rpath,/app/out -o /tmp/demo && /tmp/demo"]

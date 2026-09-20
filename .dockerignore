@@ -1,0 +1,23 @@
+# Keep the Docker build context small and rebuild artifacts inside the image.
+.git
+.gitignore
+.opencode
+docs
+
+# Generated build artifacts (rebuilt by docker/Dockerfile.build).
+out/
+out-bundle/
+
+# Compiled demos and Cargo output.
+examples/cpp/demo
+examples/fortran/demo
+examples/fortran/*.mod
+examples/fortran/*.o
+examples/rust/target/
+
+# Python caches.
+**/__pycache__/
+**/*.py[cod]
+*.egg-info/
+build/
+dist/

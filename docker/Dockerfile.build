@@ -1,0 +1,47 @@
+# syntax=docker/dockerfile:1
+#
+# Build image for jlw_example.
+#
+# Produces, inside the image at /app/out:
+#   - jlw_example.so        shared library (Linux)
+#   - jlw_example.h         C header
+#   - jlw_example.abi.json  ABI metadata from juliac
+#   - jlw_example.jlw.json  @api declaration metadata
+#   - pyproject.toml        Python package metadata
+#   - jlw_example_py/       generated Python package
+#
+# This image is the base for the per-language runtime images
+# (Dockerfile.python, Dockerfile.cpp, Dockerfile.fortran, Dockerfile.rust).
+# The library is built with `bundle = false`, so it keeps a dependency on the
+# Julia runtime and every runtime image must share the same Julia prefix
+# (/usr/local/julia), which deriving from this image guarantees.
+#
+# Usage (from the repository root):
+#   docker build -f docker/Dockerfile.build -t jlw_example-build .
+
+FROM julia:1.13-bookworm
+
+ENV DEBIAN_FRONTEND=noninteractive
+
+RUN apt-get update \
+ && apt-get install -y --no-install-recommends \
+      build-essential \
+      ca-certificates \
+ && rm -rf /var/lib/apt/lists/*
+
+WORKDIR /app
+
+# Copy manifests and sources. Copies are ordered so that dependency
+# resolution is cached when only source files change.
+COPY Project.toml Manifest.toml build.jl build_bundle.jl run_all.sh ./
+COPY build-env/Project.toml build-env/Manifest.toml build-env/
+COPY src/ src/
+COPY examples/ examples/
+
+# Resolve the Julia environments, then build the shared library, the C header
+# and the generated Python package.
+RUN julia --project=build-env -e 'using Pkg; Pkg.instantiate()' \
+ && julia --project=. -e 'using Pkg; Pkg.instantiate()' \
+ && julia --project=. build.jl
+
+CMD ["bash"]

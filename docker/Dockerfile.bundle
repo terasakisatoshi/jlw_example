@@ -1,0 +1,28 @@
+# syntax=docker/dockerfile:1
+#
+# Runtime image for the Julia-independent distribution bundle.
+#
+# Stage 1 reuses the build image to run build_bundle.jl, which produces
+# out-bundle/ with a privatized Julia runtime. Stage 2 is a plain Python
+# image with NO Julia installed, proving the bundle runs on a Julia-less host.
+#
+# Build the base image first:
+#   docker build -f docker/Dockerfile.build -t jlw_example-build .
+# Then:
+#   docker build -f docker/Dockerfile.bundle -t jlw_example-bundle .
+#   docker run --rm jlw_example-bundle
+#
+# Override BUILD_IMAGE for a different build image or registry path.
+
+ARG BUILD_IMAGE=jlw_example-build:latest
+FROM ${BUILD_IMAGE} AS bundle-build
+
+RUN julia --project=. build_bundle.jl
+
+FROM python:3.11-slim-bookworm
+
+COPY --from=bundle-build /app/out-bundle /out-bundle
+
+RUN pip install --no-cache-dir /out-bundle
+
+CMD ["python", "-c", "from jlw_example_py import hello; print(hello('world'))"]
