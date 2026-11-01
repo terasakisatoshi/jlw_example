@@ -1,17 +1,14 @@
 # jlw_example
 
-[JuliaLibWrapping.jl](https://github.com/JuliaInterop/JuliaLibWrapping.jl) (JLW) で Julia のコードを共有ライブラリに変換し、Python、C++、Fortran、Rust から呼び出す例である。
-題材は Mandelbrot 集合の描画と、境界をまたぐ文字列・スカラー・配列の受け渡しである。
+An example of using [JuliaLibWrapping.jl](https://github.com/JuliaInterop/JuliaLibWrapping.jl) (JLW) to turn Julia code into a shared library and call it from Python, C++, Fortran, and Rust. It demonstrates drawing the Mandelbrot set and passing strings, scalars, and arrays across the language boundary.
 
-## クイックデモ
+## Quick demo
 
-`git clone` から一通りの機能（Python、C++、Fortran、Rust、Julia 非依存 bundle）を実行するまでのコマンド。
-ローカル経路と Docker 経路はどちらか一方を実行すればよい。
-両方を続けて試す場合は、2 つ目の clone 先を変える（Docker 経路の例を参照）。
+These commands cover cloning the repository and running all features: Python, C++, Fortran, Rust, and the Julia-independent bundle. Choose either the local or Docker route. To try both, use a different clone destination for the second route, as shown in the Docker example.
 
-### ローカルで実行する
+### Run locally
 
-前提として Julia 1.13 以降、C++ コンパイラ、gfortran、cargo、Python 3 と NumPy が要る（[必要環境](#必要環境)）。
+You need Julia 1.13 or later, a C++ compiler, gfortran, cargo, Python 3, and NumPy (see [Requirements](#requirements)).
 
 ```sh
 git clone https://github.com/terasakisatoshi/jlw_example.git
@@ -19,10 +16,9 @@ cd jlw_example
 ./run_all.sh
 ```
 
-`run_all.sh` が共有ライブラリと Python パッケージを生成し、Python、C++、Fortran、Rust のデモを順に実行する。
-最後に `All demos ran successfully.` と出れば成功である。
+`run_all.sh` builds the shared library and Python package, then runs the Python, C++, Fortran, and Rust demos in order. The run succeeds when it ends with `All demos ran successfully.`
 
-続けて Julia 非依存の配布用パッケージを試す。
+Next, try the Julia-independent distribution package:
 
 ```sh
 julia --project=. build_bundle.jl
@@ -31,10 +27,9 @@ python3 -m venv /tmp/jlw_bundle-venv
 /tmp/jlw_bundle-venv/bin/python -c 'from jlw_example_py import hello; print(hello("world"))'
 ```
 
-### Docker で実行する
+### Run with Docker
 
-Julia や各言語のツールチェーンをローカルに入れずに試す場合は Docker を使う（[Docker](#docker)）。
-Docker と `make` が要る。
+Use Docker to try the examples without installing Julia or the language toolchains locally (see [Docker](#docker)). Docker and `make` are required.
 
 ```sh
 git clone https://github.com/terasakisatoshi/jlw_example.git jlw_example-docker
@@ -42,77 +37,69 @@ cd jlw_example-docker
 make -C docker run-all
 ```
 
-ビルド用イメージを生成したあと、Python、C++、Fortran、Rust、bundle の各イメージをビルドして実行する。
+This builds the build image, then builds and runs the Python, C++, Fortran, Rust, and bundle images.
 
-## 何を確かめられるか
+## What this example demonstrates
 
-この例は JLW の境界仕様を一通り触れるようにしてある。
+The examples cover the main JLW boundary conventions:
 
-- Julia の `String` を Python の `str`、C の `CString_owned` として受け渡す。
-- `Int` と `Float64` のスカラーをそのまま受け渡す。
-- `Matrix{Int32}` を所有権付き配列として返し、呼び出し側が Julia 列優先のデータを読む。
-- `Vector{Float64}` を借用配列として渡し、Julia 側の変更を呼び出し側で観測する。
+- Pass a Julia `String` as a Python `str` or a C `CString_owned`.
+- Pass `Int` and `Float64` scalars directly.
+- Return a `Matrix{Int32}` as an owned array and read its Julia column-major data from the caller.
+- Pass a `Vector{Float64}` as a borrowed array and observe Julia's changes from the caller.
 
-Python 向けのラッパーは JLW が生成する。
-C++、Fortran、Rust 向けのバインディングは生成されないため、生成された C ヘッダ `out/jlw_example.h` を各言語から直接使う。
+JLW generates the Python wrapper. It does not generate bindings for C++, Fortran, or Rust, so those examples use the generated C header `out/jlw_example.h` directly.
 
-## 必要環境
+## Requirements
 
-- Julia 1.13 以降
-- JLWInterop 0.2、JuliaLibWrapping 0.2、JuliaC 0.3（`Pkg.instantiate` が導入する）
-- C++ コンパイラ、gfortran、cargo、Python 3 と NumPy
+- Julia 1.13 or later
+- JLWInterop 0.2, JuliaLibWrapping 0.2, and JuliaC 0.3 (installed by `Pkg.instantiate`)
+- A C++ compiler, gfortran, cargo, Python 3, and NumPy
 
-## ビルドと実行
+## Build and run
 
-すべてまとめて実行するなら次で足りる。
+To run everything at once:
 
 ```sh
 ./run_all.sh
 ```
 
-手動で進める場合は 3 段階に分かれる。
+To build manually, follow these three steps:
 
 ```sh
-julia --project=build-env -e 'using Pkg; Pkg.instantiate()'   # ビルド用ツール
-julia --project=. -e 'using Pkg; Pkg.instantiate()'           # ライブラリの実行依存
-julia --project=. build.jl                                    # 共有ライブラリとラッパー生成
+julia --project=build-env -e 'using Pkg; Pkg.instantiate()'   # Build tools
+julia --project=. -e 'using Pkg; Pkg.instantiate()'           # Library runtime dependencies
+julia --project=. build.jl                                    # Generate the shared library and wrapper
 ```
 
-`build.jl` は `build_library` を `bundle = false` で呼ぶ。
-`bundle = false` のとき生成ライブラリはビルドマシンの `libjulia` を参照するので、実行環境に Julia がある前提になる。
-配布用に単体で動くパッケージを作る場合は `bundle = true` と `privatize` を使う（[Bundling for distribution](https://juliainterop.github.io/JuliaLibWrapping.jl/stable/building/#Bundling-for-distribution)）。
+`build.jl` calls `build_library` with `bundle = false`. The generated library refers to the build machine's `libjulia`, so Julia must be available in the runtime environment. To create a standalone distribution package, use `bundle = true` and `privatize` (see [Bundling for distribution](https://juliainterop.github.io/JuliaLibWrapping.jl/stable/building/#Bundling-for-distribution)).
 
-ビルド後の `out/` は次の構成になる。
+After building, `out/` has the following structure:
 
 ```
 out/
-├── jlw_example.dylib        # 共有ライブラリ (Linux では .so)
-├── jlw_example.h            # C ヘッダ
-├── jlw_example.abi.json     # juliac が出力する ABI 情報
-├── jlw_example.jlw.json     # @api 宣言のメタデータ
+├── jlw_example.dylib        # Shared library (.so on Linux)
+├── jlw_example.h            # C header
+├── jlw_example.abi.json     # ABI information emitted by juliac
+├── jlw_example.jlw.json     # Metadata for @api declarations
 ├── pyproject.toml
-└── jlw_example_py/          # Python パッケージ
+└── jlw_example_py/          # Python package
     ├── __init__.py
-    ├── _facade.py           # 編集可能な薄いラッパー
-    └── _lowlevel.py         # ctypes の機械的バインディング
+    ├── _facade.py           # Editable thin wrapper
+    └── _lowlevel.py         # Mechanical ctypes bindings
 ```
 
-`build.jl` は生成直後に共有ライブラリを `out/jlw_example_py/` へ複製する。
-生成された Python ローダーはパッケージと同じディレクトリのライブラリを探すためである。
+`build.jl` copies the shared library to `out/jlw_example_py/` immediately after generation because the generated Python loader looks for the library in the package directory.
 
-### Julia 非依存の配布用パッケージ
+### Julia-independent distribution package
 
-Julia をインストールしていない環境へ配る場合は `build_bundle.jl` を使う。
+Use `build_bundle.jl` to distribute the package to environments without Julia:
 
 ```sh
 julia --project=. build_bundle.jl
 ```
 
-これは `standard_build` を既定の `bundle = true` で呼び、`out-bundle/` に生成する。
-Julia ランタイム一式が `out-bundle/jlw_example_py/bundle/lib/` に同梱され、`libjulia` は私有化される。
-私有化（`privatize`）は共有ライブラリの install name を `@loader_path` 基準へ書き換えるので、環境変数を設定しなくても実行時に同梱ランタイムが見つかる。
-生成された Python ローダーも、パッケージ直下より先に `bundle/lib` を探す。
-サイズは数十 MB 増えるが、`pip install` だけで動く。
+This calls `standard_build` with its default `bundle = true` and generates `out-bundle/`. The Julia runtime is included in `out-bundle/jlw_example_py/bundle/lib/`, and `libjulia` is privatized. Privatization (`privatize`) rewrites shared-library install names relative to `@loader_path`, so the bundled runtime can be found without setting environment variables. The generated Python loader also searches `bundle/lib` before the package root. The package is tens of megabytes larger, but works with just `pip install`.
 
 ```sh
 python3 -m venv /tmp/jlw_bundle-venv
@@ -120,9 +107,9 @@ python3 -m venv /tmp/jlw_bundle-venv
 /tmp/jlw_bundle-venv/bin/python -c 'from jlw_example_py import hello; print(hello("world"))'
 ```
 
-この最後のコマンドは `Hello, world` を出力する（Julia が `PATH` に無くてもよい）。
+The last command prints `Hello, world`, even if Julia is not on `PATH`.
 
-`out-bundle/` の主な構成は次のとおり。ランタイムは `jlw_example_py/bundle/lib/` に入る。
+The main contents of `out-bundle/` are shown below. The runtime is in `jlw_example_py/bundle/lib/`.
 
 ```
 out-bundle/
@@ -130,7 +117,7 @@ out-bundle/
 │   ├── _facade.py
 │   ├── _lowlevel.py
 │   └── bundle/
-│       └── lib/              # 私有化された libjulia と依存ライブラリ
+│       └── lib/              # Privatized libjulia and its dependencies
 │           ├── <hash>_libjulia*.dylib
 │           ├── jlw_example.dylib
 │           └── julia/
@@ -140,32 +127,28 @@ out-bundle/
 └── pyproject.toml
 ```
 
-`pyproject.toml` は `numpy>=1.20` に依存するため、Julia の無い環境でも PyPI へのアクセスは必要である。
-完全にオフラインで配る場合は事前に wheel を用意する。
+Because `pyproject.toml` depends on `numpy>=1.20`, access to PyPI is still required in an environment without Julia. For fully offline distribution, prepare the wheels in advance.
 
-C++、Fortran、Rust のデモは `out/` のライブラリを前提にしている。
+The C++, Fortran, and Rust demos expect the library in `out/`.
 
-## 公開 API
+## Public API
 
-`src/jlw_example.jl` の `@api` 宣言が外部に見える境界を決める。
-`@export_release_entrypoints` は所有権付きの戻り値を解放する `jlw_free` を出力する。文字列と配列を返す API には必須である。
+The `@api` declarations in `src/jlw_example.jl` define the externally visible boundary. `@export_release_entrypoints` emits `jlw_free` for freeing owned return values; it is required for APIs that return strings or arrays.
 
-| Julia の関数 | 引数 | 戻り値 | 生成される C 関数 |
+| Julia function | Arguments | Return value | Generated C function |
 | --- | --- | --- | --- |
 | `hello(who)` | `String` | `String` | `jlw_example_hello` |
 | `escape_time(cx, cy; maxiter)` | `Float64`, `Float64`, `Int` | `Int` | `jlw_example_escape_time` |
 | `mandelbrot(width, height; maxiter)` | `Int`, `Int`, `Int` | `Matrix{Int32}` | `jlw_example_mandelbrot` |
 | `scale_inplace(a; factor)` | `Vector{Float64}`, `Float64` | `Nothing` | `jlw_example_scale_inplace` |
 
-C の関数名は宣言したモジュール名で修飾される。
-各言語のラッパーはこの修飾名をそのまま使う。
+C function names are qualified with the declaring module's name. The language wrappers use those qualified names directly.
 
-## 言語ごとの要点
+## Language-specific notes
 
 ### Python
 
-生成された `_facade.py` が NumPy 配列と `str` を扱う。
-`mandelbrot` は `(height, width)` の `int32` 配列を返し、所有権付きカーリを `finally` で解放する。
+The generated `_facade.py` handles NumPy arrays and `str`. `mandelbrot` returns an `int32` array of shape `(height, width)` and frees the owned return value in a `finally` block.
 
 ```sh
 python3 -m venv /tmp/jlw_example-venv
@@ -173,9 +156,9 @@ python3 -m venv /tmp/jlw_example-venv
 PYTHONPATH=out /tmp/jlw_example-venv/bin/python examples/python/demo.py
 ```
 
-`demo.py` は先頭で `Hello, Python`、続けて `scale_inplace -> [0.5 1.  1.5 2. ]` と `escape_time(0.5, 0.5) = 5` を出力し、最後に Mandelbrot を文字で描く。
+`demo.py` first prints `Hello, Python`, followed by `scale_inplace -> [0.5 1.  1.5 2. ]` and `escape_time(0.5, 0.5) = 5`, and finally draws the Mandelbrot set in text.
 
-`out/` には `pyproject.toml` もあるので、パッケージとして導入してもよい（`numpy` は依存として自動導入される）。
+Since `out/` also contains `pyproject.toml`, you can install it as a package instead (`numpy` is installed automatically as a dependency):
 
 ```sh
 /tmp/jlw_example-venv/bin/pip install ./out
@@ -184,71 +167,54 @@ PYTHONPATH=out /tmp/jlw_example-venv/bin/python examples/python/demo.py
 
 ### C++
 
-生成ヘッダは C リンケージで書かれているため、C++ からは `extern "C"` で囲んで読み込む。
-これがないとシンボル名がマングリングされてリンクに失敗する。
-文字列・行列を返す API の戻り値は所有権付きなので、`JLWResult_*.value` を使い終えたら `jlw_free(value.data)` を呼ぶ（`examples/cpp/demo.cpp` 参照）。
+The generated header uses C linkage, so include it within `extern "C"` in C++. Otherwise, symbol names are mangled and linking fails. APIs that return strings or matrices return owned values, so call `jlw_free(value.data)` after using `JLWResult_*.value` (see `examples/cpp/demo.cpp`).
 
 ```sh
 c++ -std=c++17 -Iout examples/cpp/demo.cpp out/jlw_example.dylib \
     -Wl,-rpath,$PWD/out -o examples/cpp/demo && ./examples/cpp/demo
 ```
 
-`demo` は `Hello, C++`、`scale_inplace -> 0.50 1.00 1.50 2.00`、`escape_time(0.5, 0.5) = 5` を出力し、最後に Mandelbrot を文字で描く。
+`demo` prints `Hello, C++`, `scale_inplace -> 0.50 1.00 1.50 2.00`, and `escape_time(0.5, 0.5) = 5`, then draws the Mandelbrot set in text.
 
 ### Fortran
 
-`iso_c_binding` で構造体のレイアウトを写す。
-`mandelbrot` が返す配列は Julia と同じ列優先なので、`c_f_pointer` で `(height, width)` の配列としてそのまま読める。
-文字列と行列の解放は `jlw_free` を呼ぶ。
+Use `iso_c_binding` to mirror the structure layouts. The array returned by `mandelbrot` is column-major, like Julia, so it can be read directly as an array of shape `(height, width)` using `c_f_pointer`. Call `jlw_free` to free strings and matrices.
 
 ```sh
 gfortran examples/fortran/demo.f90 out/jlw_example.dylib \
     -Wl,-rpath,$PWD/out -o examples/fortran/demo && ./examples/fortran/demo
 ```
 
-`gfortran` は構造体を値で返す C 関数を扱える必要がある（GCC 8 以降で確認）。
-`demo` は `Hello, C++`、`scale_inplace -> 0.50  1.00  1.50  2.00`、`escape_time(0.5, 0.5) = 5` を出力する。
+`gfortran` must support C functions that return structures by value (verified with GCC 8 and later). `demo` prints `Hello, C++`, `scale_inplace -> 0.50  1.00  1.50  2.00`, and `escape_time(0.5, 0.5) = 5`.
 
 ### Rust
 
-ABI 構造体を `#[repr(C)]` で定義し、`build.rs` からライブラリのパスと `rpath` をリンカに渡す。
-共有ライブラリ名に `lib` 接頭辞が付かないため、`-l` ではなくパスを直接渡している。
+Define the ABI structures with `#[repr(C)]` and pass the library path and `rpath` to the linker from `build.rs`. Because the shared library name has no `lib` prefix, the path is passed directly instead of using `-l`.
 
 ```sh
 cargo run --manifest-path examples/rust/Cargo.toml
 ```
 
-`examples/rust/Cargo.toml` は edition 2021 を使う。
-`cargo run` は `Hello, Rust`、`scale_inplace -> [0.5, 1.0, 1.5, 2.0]`、`escape_time(0.5, 0.5) = 5` を出力する。
+`examples/rust/Cargo.toml` uses edition 2021. `cargo run` prints `Hello, Rust`, `scale_inplace -> [0.5, 1.0, 1.5, 2.0]`, and `escape_time(0.5, 0.5) = 5`.
 
-## 境界の規約
+## Boundary conventions
 
-配列は**列優先**である。
-要素 `(i, j)` は `data[i + j*rows]` で読む。
-戻り値の行列は `dims = (rows, cols) = (height, width)` の順で次元を持つ。
-たとえば `mandelbrot(3, 2)` は `dims = (2, 3)`、長さ 6 の `data` を返し、0 始まりの `data[i + j*rows]` が 1 始まりの要素 `(i+1, j+1)` に対応する。
-Python の NumPy は行優先が既定なので、N 次元配列を渡すときは `np.asfortranarray` が要る（この例では 1 次元配列しか渡していない）。
+Arrays are **column-major**. Read element `(i, j)` as `data[i + j*rows]`. A returned matrix has dimensions in the order `dims = (rows, cols) = (height, width)`. For example, `mandelbrot(3, 2)` returns `dims = (2, 3)` and a `data` array of length 6; zero-based `data[i + j*rows]` corresponds to the one-based element `(i+1, j+1)`. NumPy defaults to row-major order, so use `np.asfortranarray` when passing N-dimensional arrays (this example only passes a one-dimensional array).
 
-引数の配列は**借用**で、呼び出し側がメモリを所有する。
-Julia 側の変更は呼び出し側から見える。
-戻り値の配列と文字列は**所有権付き**で、ライブラリが確保したコピーを呼び出し側が `jlw_free` で解放する。
+Array arguments are **borrowed**: the caller owns their memory, and changes made by Julia are visible to the caller. Returned arrays and strings are **owned**: the caller must free the copies allocated by the library using `jlw_free`.
 
-エラーは `JLWStatus.code` で伝わる。
-`code == 0` が成功で、非ゼロのとき `message` に例外メッセージが入る。
-Python では `JLWError` として送出される。
+Errors are reported through `JLWStatus.code`. A `code` of zero indicates success; otherwise, `message` contains the exception message. In Python, errors are raised as `JLWError`.
 
 ## Docker
 
-言語ごとの実行用イメージと、共有ライブラリを生成するビルド用イメージを `docker/` に用意してある。
-ビルド用が Julia をコンパイルする唯一のイメージで、実行用はその上にツールチェーンを足してデモを走らせるだけである。
-ビルド順（ビルド用 → 各言語）は `Makefile` が面倒を見る。
+The `docker/` directory contains a build image for generating the shared library and runtime images for each language. The build image is the only one that compiles Julia; the runtime images add toolchains on top of it and run the demos. The `Makefile` handles the build order (build image first, then each language).
 
 ```sh
-make -C docker all        # ビルド用と全言語のイメージを作る
-make -C docker run-all    # ビルドして各イメージを実行する
+make -C docker all        # Build the build image and all language images
+make -C docker run-all    # Build and run each image
 ```
 
-手動で進める場合は次のとおり。
+To run the steps manually:
 
 ```sh
 docker build -f docker/Dockerfile.build -t jlw_example-build .
@@ -256,22 +222,19 @@ docker build -f docker/Dockerfile.python -t jlw_example-python .
 docker run --rm jlw_example-python
 ```
 
-実行用は `Dockerfile.python`、`Dockerfile.cpp`、`Dockerfile.fortran`、`Dockerfile.rust`、`Dockerfile.bundle` の 5 つ。
-`Dockerfile.bundle` だけは Julia を入れない `python` イメージへ `out-bundle/` を導入し、Julia 無しで動くことを確かめる。
-詳細と `BUILD_IMAGE` / `RUST_IMAGE` の上書きは `docker/README.md` を参照。
-Docker 内は Linux なので共有ライブラリは `jlw_example.so` になる。
+There are five runtime Dockerfiles: `Dockerfile.python`, `Dockerfile.cpp`, `Dockerfile.fortran`, `Dockerfile.rust`, and `Dockerfile.bundle`. Only `Dockerfile.bundle` installs `out-bundle/` into a `python` image without Julia, verifying that it works without Julia. See `docker/README.md` for details and for overriding `BUILD_IMAGE` / `RUST_IMAGE`. Docker uses Linux, so the shared library is named `jlw_example.so`.
 
-## ファイル構成
+## File layout
 
 ```
 jlw_example/
-├── Project.toml            # 実行依存 (JLWInterop)
-├── build-env/Project.toml  # ビルド用ツール (JuliaC, JuliaLibWrapping)
-├── build.jl                # build_library の呼び出し
-├── build_bundle.jl         # Julia 非依存の配布用 (bundle = true)
-├── run_all.sh              # 全言語のビルドと実行
-├── src/jlw_example.jl      # @api 宣言と本体
-├── docker/                 # ビルド用/言語別の Dockerfile
+├── Project.toml            # Runtime dependency (JLWInterop)
+├── build-env/Project.toml  # Build tools (JuliaC, JuliaLibWrapping)
+├── build.jl                # Calls build_library
+├── build_bundle.jl         # Julia-independent distribution (bundle = true)
+├── run_all.sh              # Builds and runs all languages
+├── src/jlw_example.jl      # @api declarations and implementation
+├── docker/                 # Build and language-specific Dockerfiles
 │   ├── Dockerfile.build
 │   ├── Dockerfile.python
 │   ├── Dockerfile.cpp
